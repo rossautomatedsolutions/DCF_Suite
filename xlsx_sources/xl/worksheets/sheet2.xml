@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:B8"/>
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr"><is><t>Outputs</t></is></c>
+    </row>
+    <row r="3">
+      <c r="A3" t="inlineStr"><is><t>Warning</t></is></c>
+      <c r="B3"><f>IF(Inputs!B4&gt;=Inputs!B5,"Warning: Terminal Growth Rate must be less than Discount Rate.","")</f></c>
+    </row>
+    <row r="5">
+      <c r="A5" t="inlineStr"><is><t>Checks</t></is></c>
+    </row>
+    <row r="6">
+      <c r="A6" t="inlineStr"><is><t>Discount_Rate &gt; Terminal_Growth_Rate</t></is></c>
+      <c r="B6"><f>Inputs!B5&gt;Inputs!B4</f></c>
+    </row>
+    <row r="7">
+      <c r="A7" t="inlineStr"><is><t>Projection_Years is integer &gt;= 1</t></is></c>
+      <c r="B7"><f>AND(Inputs!B6&gt;=1,Inputs!B6=INT(Inputs!B6))</f></c>
+    </row>
+    <row r="8">
+      <c r="A8" t="inlineStr"><is><t>Units_Outstanding &gt; 0</t></is></c>
+      <c r="B8"><f>Inputs!B7&gt;0</f></c>
+    </row>
+  </sheetData>
+</worksheet>
