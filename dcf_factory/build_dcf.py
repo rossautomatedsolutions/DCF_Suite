@@ -27,19 +27,20 @@ YEAR_INDEX_VALUES = [
 ]
 
 ASSUMPTIONS = [
-    ("base_year", 2024, "Base calendar year"),
+    ("Period_Start_Year", 2025, "First projection year"),
     ("Projection_Years", 10, "Number of forecast years"),
-    ("revenue_base", 1000000, "Base-year revenue"),
-    ("revenue_growth", 0.05, "Annual revenue growth"),
-    ("ebitda_margin", 0.25, "EBITDA margin"),
-    ("tax_rate", 0.25, "Cash tax rate"),
-    ("capex_pct_revenue", 0.04, "Capex as % of revenue"),
-    ("nwc_pct_revenue", 0.02, "NWC as % of revenue"),
-    ("discount_rate", 0.1, "Discount rate"),
-    ("terminal_growth", 0.03, "Terminal growth rate"),
-    ("Units_Outstanding", 100000, "Units outstanding"),
+    ("Discount_Rate", 0.1, "Flat annual discount rate"),
+    ("Tax_Rate", 0.25, "Effective tax rate"),
+    ("Revenue_Base", 1000000, "Revenue in the most recent historical year"),
+    ("Revenue_Growth_Rate", 0.05, "Annual revenue growth rate"),
+    ("EBIT_Margin", 0.25, "EBIT as % of revenue"),
+    ("Depreciation_Pct_Revenue", 0.03, "Depreciation as % of revenue"),
+    ("Capex_Pct_Revenue", 0.04, "Capex as % of revenue"),
+    ("NWC_Pct_Revenue", 0.02, "Net working capital as % of revenue"),
+    ("Terminal_Method", "Perpetuity Growth", "Terminal value method"),
+    ("Terminal_Growth_Rate", 0.03, "Terminal growth rate"),
     ("Net_Debt", 200000, "Net debt"),
-    ("nwc_base", 0, "Starting NWC balance"),
+    ("Units_Outstanding", 100000, "Units outstanding"),
     ("zero", 0, "Numeric constant"),
     ("one", 1, "Numeric constant"),
     ("two", 2, "Numeric constant"),
@@ -88,13 +89,14 @@ def _build_inputs(sheet, workbook, styles) -> None:
         sheet[cell].style = styles["header"]
 
     percent_assumptions = {
-        "revenue_growth",
-        "ebitda_margin",
-        "tax_rate",
-        "capex_pct_revenue",
-        "nwc_pct_revenue",
-        "discount_rate",
-        "terminal_growth",
+        "Discount_Rate",
+        "Tax_Rate",
+        "Revenue_Growth_Rate",
+        "EBIT_Margin",
+        "Depreciation_Pct_Revenue",
+        "Capex_Pct_Revenue",
+        "NWC_Pct_Revenue",
+        "Terminal_Growth_Rate",
     }
 
     row = 4
@@ -125,7 +127,7 @@ def _build_inputs(sheet, workbook, styles) -> None:
         year_index_name = YEAR_INDEX_NAMES[col - 2]
         cell.value = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"base_year+{year_index_name},\"\")"
+            f"Period_Start_Year+{year_index_name}-one,\"\")"
         )
         add_named_range(workbook, name, sheet.title, cell.coordinate)
         cell.style = styles["number"]
@@ -148,12 +150,13 @@ def _build_operating_model(sheet, styles) -> None:
 
     metrics = [
         "Revenue",
-        "EBITDA",
-        "Taxes",
+        "EBIT",
+        "NOPAT",
+        "Depreciation",
         "Capex",
-        "NWC",
+        "Net Working Capital",
         "Change in NWC",
-        "Unlevered Free Cash Flow",
+        "Free Cash Flow",
     ]
 
     for row_offset, metric in enumerate(metrics, start=3):
@@ -165,10 +168,10 @@ def _build_operating_model(sheet, styles) -> None:
         year_index_name = YEAR_INDEX_NAMES[col - 2]
         revenue_cell = f"{year_col}3"
         if col == 2:
-            revenue_formula = "revenue_base*(one+revenue_growth)"
+            revenue_formula = "Revenue_Base*(one+Revenue_Growth_Rate)"
         else:
             prev_col = chr(63 + col)
-            revenue_formula = f"{prev_col}3*(one+revenue_growth)"
+            revenue_formula = f"{prev_col}3*(one+Revenue_Growth_Rate)"
         sheet[revenue_cell] = (
             f"=IF({year_index_name}<=Projection_Years,{revenue_formula},\"\")"
         )
@@ -176,43 +179,49 @@ def _build_operating_model(sheet, styles) -> None:
 
         sheet[f"{year_col}4"] = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"{year_col}3*ebitda_margin,\"\")"
+            f"{year_col}3*EBIT_Margin,\"\")"
         )
         sheet[f"{year_col}4"].style = styles["currency"]
 
         sheet[f"{year_col}5"] = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"{year_col}4*tax_rate,\"\")"
+            f"{year_col}4*(one-Tax_Rate),\"\")"
         )
         sheet[f"{year_col}5"].style = styles["currency"]
 
         sheet[f"{year_col}6"] = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"{year_col}3*capex_pct_revenue,\"\")"
+            f"{year_col}3*Depreciation_Pct_Revenue,\"\")"
         )
         sheet[f"{year_col}6"].style = styles["currency"]
 
         sheet[f"{year_col}7"] = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"{year_col}3*nwc_pct_revenue,\"\")"
+            f"{year_col}3*Capex_Pct_Revenue,\"\")"
         )
         sheet[f"{year_col}7"].style = styles["currency"]
 
-        if col == 2:
-            nwc_formula = f"{year_col}7-nwc_base"
-        else:
-            prev_col = chr(63 + col)
-            nwc_formula = f"{year_col}7-{prev_col}7"
         sheet[f"{year_col}8"] = (
-            f"=IF({year_index_name}<=Projection_Years,{nwc_formula},\"\")"
+            f"=IF({year_index_name}<=Projection_Years,"
+            f"{year_col}3*NWC_Pct_Revenue,\"\")"
         )
         sheet[f"{year_col}8"].style = styles["currency"]
 
+        if col == 2:
+            nwc_formula = f"{year_col}8-zero"
+        else:
+            prev_col = chr(63 + col)
+            nwc_formula = f"{year_col}8-{prev_col}8"
         sheet[f"{year_col}9"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
-            f"{year_col}4-{year_col}5-{year_col}6-{year_col}8,\"\")"
+            f"=IF({year_index_name}<=Projection_Years,{nwc_formula},\"\")"
         )
         sheet[f"{year_col}9"].style = styles["currency"]
+
+        sheet[f"{year_col}10"] = (
+            f"=IF({year_index_name}<=Projection_Years,"
+            f"{year_col}5+{year_col}6-{year_col}7-{year_col}9,\"\")"
+        )
+        sheet[f"{year_col}10"].style = styles["currency"]
 
     sheet.column_dimensions["A"].width = 28
 
@@ -230,13 +239,15 @@ def _build_valuation(sheet, styles) -> None:
         cell.style = styles["header"]
 
     metrics = [
-        "Unlevered Free Cash Flow",
+        "Free Cash Flow",
         "Discount Factor",
-        "PV of UFCF",
+        "PV of FCF",
         "",
         "Terminal Value",
         "PV of Terminal Value",
         "",
+        "PV of Explicit FCF",
+        "PV of Terminal Value",
         "Enterprise Value",
         "Net Debt",
         "Equity Value",
@@ -254,13 +265,13 @@ def _build_valuation(sheet, styles) -> None:
         year_index_name = YEAR_INDEX_NAMES[col - 2]
         sheet[f"{year_col}3"] = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"Operating_Model!{year_col}9,\"\")"
+            f"Operating_Model!{year_col}10,\"\")"
         )
         sheet[f"{year_col}3"].style = styles["currency"]
 
         sheet[f"{year_col}4"] = (
             f"=IF({year_index_name}<=Projection_Years,"
-            f"one/(one+discount_rate)^{year_index_name},\"\")"
+            f"one/(one+Discount_Rate)^{year_index_name},\"\")"
         )
         sheet[f"{year_col}4"].style = styles["number"]
 
@@ -273,8 +284,8 @@ def _build_valuation(sheet, styles) -> None:
     last_year_col = chr(64 + YEAR_COUNT + 1)
     sheet[f"{last_year_col}7"] = (
         "=IF(Projection_Years>zero,"
-        "INDEX(B3:K3,Projection_Years)*(one+terminal_growth)/"
-        "(discount_rate-terminal_growth),\"\")"
+        "INDEX(B3:K3,Projection_Years)*(one+Terminal_Growth_Rate)/"
+        "(Discount_Rate-Terminal_Growth_Rate),\"\")"
     )
     sheet[f"{last_year_col}7"].style = styles["currency"]
 
@@ -284,22 +295,26 @@ def _build_valuation(sheet, styles) -> None:
     )
     sheet[f"{last_year_col}8"].style = styles["currency"]
 
-    sheet["B10"] = (
-        f"=IF(Projection_Years>zero,SUM(B5:K5)+{last_year_col}8,\"\")"
-    )
+    sheet["B10"] = "=IF(Projection_Years>zero,SUM(B5:K5),\"\")"
     sheet["B10"].style = styles["currency"]
 
-    sheet["B11"] = "=Net_Debt"
+    sheet["B11"] = f"=IF(Projection_Years>zero,{last_year_col}8,\"\")"
     sheet["B11"].style = styles["currency"]
 
-    sheet["B12"] = "=B10-B11"
+    sheet["B12"] = "=IF(Projection_Years>zero,B10+B11,\"\")"
     sheet["B12"].style = styles["currency"]
 
-    sheet["B13"] = "=Units_Outstanding"
-    sheet["B13"].style = styles["number"]
+    sheet["B13"] = "=Net_Debt"
+    sheet["B13"].style = styles["currency"]
 
-    sheet["B14"] = "=IF(Units_Outstanding>zero,B12/B13,\"\")"
+    sheet["B14"] = "=B12-B13"
     sheet["B14"].style = styles["currency"]
+
+    sheet["B15"] = "=Units_Outstanding"
+    sheet["B15"].style = styles["number"]
+
+    sheet["B16"] = "=IF(Units_Outstanding>zero,B14/B15,\"\")"
+    sheet["B16"].style = styles["currency"]
 
     sheet.column_dimensions["A"].width = 28
 
@@ -309,9 +324,11 @@ def _build_outputs(sheet, styles) -> None:
     sheet["A1"].style = styles["label"]
 
     outputs = [
-        ("Enterprise Value", "=Valuation!B10", "currency"),
-        ("Equity Value", "=Valuation!B12", "currency"),
-        ("Value Per Unit", "=Valuation!B14", "currency"),
+        ("PV of Explicit FCF", "=Valuation!B10", "currency"),
+        ("PV of Terminal Value", "=Valuation!B11", "currency"),
+        ("Enterprise Value", "=Valuation!B12", "currency"),
+        ("Equity Value", "=Valuation!B14", "currency"),
+        ("Value Per Unit", "=Valuation!B16", "currency"),
     ]
 
     sheet["A3"] = "Metric"
@@ -337,22 +354,22 @@ def _build_notes(sheet, styles) -> None:
 
     lines = [
         "Purpose",
-        "This template is designed for educational and illustrative use in showing",
-        "how a single-scenario discounted cash flow model flows from inputs to outputs.",
+        "This template is designed for educational and illustrative valuation mechanics.",
+        "It is intended to help users understand how inputs flow through a discounted",
+        "cash flow model in a transparent, single-scenario structure.",
         "",
         "Important Disclosures",
-        "- This spreadsheet is for informational and educational use only.",
-        "- It does not constitute investment, accounting, or legal advice.",
-        "- Outputs are mechanically derived from user inputs and are not forecasts.",
+        "- This spreadsheet is for educational use only and does not constitute investment advice.",
+        "- It does not guarantee accuracy, completeness, or suitability for any purpose.",
+        "- All outputs are mechanically derived from user inputs and do not represent forecasts.",
         "- Users are responsible for validating assumptions and results.",
         "",
         "Definitions",
-        "- NOPAT: Net Operating Profit After Tax; EBITDA minus Taxes in this model.",
-        "- UFCF: Unlevered Free Cash Flow; EBITDA minus Taxes, Capex, and Change in NWC.",
+        "- NOPAT: Net Operating Profit After Tax; EBIT × (1 − Tax_Rate).",
+        "- FCF: Free Cash Flow to the Firm; NOPAT + Depreciation − Capex − Change in NWC.",
         "- Terminal Value: Value of cash flows beyond the explicit forecast period",
         "  using a single perpetuity growth method.",
     ]
 
     for row, line in enumerate(lines, start=3):
         sheet[f"A{row}"] = line
-
