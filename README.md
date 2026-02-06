@@ -3,7 +3,7 @@
 Deterministic DCF spreadsheet generator using Python 3.11+ and `openpyxl` only.
 
 ## Features
-- Generates a 5-year single-scenario DCF model.
+- Generates a fixed 10-year single-scenario DCF model.
 - All assumptions live on the **Inputs** sheet and are exposed as named ranges.
 - Formulas avoid numeric literals by referencing named ranges.
 - No macros and no pandas.
