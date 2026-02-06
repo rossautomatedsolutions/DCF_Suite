@@ -208,7 +208,7 @@ def _build_operating_model(sheet, styles) -> None:
         sheet[f"{year_col}8"].style = styles["currency"]
 
         if col == 2:
-            nwc_formula = f"{year_col}8-zero"
+            nwc_formula = f"{year_col}8-(Revenue_Base*NWC_Pct_Revenue)"
         else:
             prev_col = chr(63 + col)
             nwc_formula = f"{year_col}8-{prev_col}8"
