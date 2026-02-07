@@ -154,7 +154,7 @@ def _build_operating_model(sheet, styles) -> None:
         "NOPAT",
         "Depreciation",
         "Capex",
-        "Net Working Capital",
+        "NWC",
         "Change in NWC",
         "Free Cash Flow",
     ]
