@@ -11,20 +11,6 @@ from dcf_factory.named_ranges import add_named_range
 
 
 YEAR_COUNT = 10
-YEAR_INDEX_NAMES = [f"year_index_{i}" for i in range(1, YEAR_COUNT + 1)]
-YEAR_LABEL_NAMES = [f"year_label_{i}" for i in range(1, YEAR_COUNT + 1)]
-YEAR_INDEX_VALUES = [
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-    "six",
-    "seven",
-    "eight",
-    "nine",
-    "ten",
-]
 
 ASSUMPTIONS = [
     ("Period_Start_Year", 2025, "First projection year"),
@@ -41,17 +27,6 @@ ASSUMPTIONS = [
     ("Terminal_Growth_Rate", 0.03, "Terminal growth rate"),
     ("Net_Debt", 200000, "Net debt"),
     ("Units_Outstanding", 100000, "Units outstanding"),
-    ("zero", 0, "Numeric constant"),
-    ("one", 1, "Numeric constant"),
-    ("two", 2, "Numeric constant"),
-    ("three", 3, "Numeric constant"),
-    ("four", 4, "Numeric constant"),
-    ("five", 5, "Numeric constant"),
-    ("six", 6, "Numeric constant"),
-    ("seven", 7, "Numeric constant"),
-    ("eight", 8, "Numeric constant"),
-    ("nine", 9, "Numeric constant"),
-    ("ten", 10, "Numeric constant"),
 ]
 
 
@@ -114,22 +89,24 @@ def _build_inputs(sheet, workbook, styles) -> None:
 
     sheet["A23"] = "Year Indices"
     sheet["A23"].style = styles["label"]
-    for col, name in enumerate(YEAR_INDEX_NAMES, start=2):
+    for col in range(2, YEAR_COUNT + 2):
         cell = sheet.cell(row=24, column=col)
-        cell.value = f"={YEAR_INDEX_VALUES[col - 2]}"
-        add_named_range(workbook, name, sheet.title, cell.coordinate)
+        if col == 2:
+            cell.value = "=1"
+        else:
+            prev_col = chr(63 + col)
+            cell.value = f"={prev_col}24+1"
         cell.style = styles["number"]
 
     sheet["A26"] = "Year Labels"
     sheet["A26"].style = styles["label"]
-    for col, name in enumerate(YEAR_LABEL_NAMES, start=2):
+    for col in range(2, YEAR_COUNT + 2):
         cell = sheet.cell(row=27, column=col)
-        year_index_name = YEAR_INDEX_NAMES[col - 2]
+        year_index_cell = f"{chr(64 + col)}24"
         cell.value = (
-            f"=IF({year_index_name}<=Projection_Years,"
-            f"Period_Start_Year+{year_index_name}-one,\"\")"
+            f"=IF({year_index_cell}<=Projection_Years,"
+            f"Period_Start_Year+{year_index_cell}-1,\"\")"
         )
-        add_named_range(workbook, name, sheet.title, cell.coordinate)
         cell.style = styles["number"]
 
     sheet.column_dimensions["A"].width = 24
@@ -143,9 +120,9 @@ def _build_operating_model(sheet, styles) -> None:
 
     sheet["A2"] = "Metric"
     sheet["A2"].style = styles["header"]
-    for col, label in enumerate(YEAR_LABEL_NAMES, start=2):
+    for col in range(2, YEAR_COUNT + 2):
         cell = sheet.cell(row=2, column=col)
-        cell.value = f"={label}"
+        cell.value = f"=Inputs!{chr(64 + col)}27"
         cell.style = styles["header"]
 
     metrics = [
@@ -165,44 +142,44 @@ def _build_operating_model(sheet, styles) -> None:
 
     for col in range(2, YEAR_COUNT + 2):
         year_col = chr(64 + col)
-        year_index_name = YEAR_INDEX_NAMES[col - 2]
+        year_index_cell = f"Inputs!{year_col}24"
         revenue_cell = f"{year_col}3"
         if col == 2:
-            revenue_formula = "Revenue_Base*(one+Revenue_Growth_Rate)"
+            revenue_formula = "Revenue_Base*(1+Revenue_Growth_Rate)"
         else:
             prev_col = chr(63 + col)
-            revenue_formula = f"{prev_col}3*(one+Revenue_Growth_Rate)"
+            revenue_formula = f"{prev_col}3*(1+Revenue_Growth_Rate)"
         sheet[revenue_cell] = (
-            f"=IF({year_index_name}<=Projection_Years,{revenue_formula},\"\")"
+            f"=IF({year_index_cell}<=Projection_Years,{revenue_formula},\"\")"
         )
         sheet[revenue_cell].style = styles["currency"]
 
         sheet[f"{year_col}4"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"{year_col}3*EBIT_Margin,\"\")"
         )
         sheet[f"{year_col}4"].style = styles["currency"]
 
         sheet[f"{year_col}5"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
-            f"{year_col}4*(one-Tax_Rate),\"\")"
+            f"=IF({year_index_cell}<=Projection_Years,"
+            f"{year_col}4*(1-Tax_Rate),\"\")"
         )
         sheet[f"{year_col}5"].style = styles["currency"]
 
         sheet[f"{year_col}6"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"{year_col}3*Depreciation_Pct_Revenue,\"\")"
         )
         sheet[f"{year_col}6"].style = styles["currency"]
 
         sheet[f"{year_col}7"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"{year_col}3*Capex_Pct_Revenue,\"\")"
         )
         sheet[f"{year_col}7"].style = styles["currency"]
 
         sheet[f"{year_col}8"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"{year_col}3*NWC_Pct_Revenue,\"\")"
         )
         sheet[f"{year_col}8"].style = styles["currency"]
@@ -213,12 +190,12 @@ def _build_operating_model(sheet, styles) -> None:
             prev_col = chr(63 + col)
             nwc_formula = f"{year_col}8-{prev_col}8"
         sheet[f"{year_col}9"] = (
-            f"=IF({year_index_name}<=Projection_Years,{nwc_formula},\"\")"
+            f"=IF({year_index_cell}<=Projection_Years,{nwc_formula},\"\")"
         )
         sheet[f"{year_col}9"].style = styles["currency"]
 
         sheet[f"{year_col}10"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"{year_col}5+{year_col}6-{year_col}7-{year_col}9,\"\")"
         )
         sheet[f"{year_col}10"].style = styles["currency"]
@@ -233,9 +210,9 @@ def _build_valuation(sheet, styles) -> None:
     sheet["A2"] = "Metric"
     sheet["A2"].style = styles["header"]
 
-    for col, label in enumerate(YEAR_LABEL_NAMES, start=2):
+    for col in range(2, YEAR_COUNT + 2):
         cell = sheet.cell(row=2, column=col)
-        cell.value = f"={label}"
+        cell.value = f"=Inputs!{chr(64 + col)}27"
         cell.style = styles["header"]
 
     metrics = [
@@ -262,46 +239,46 @@ def _build_valuation(sheet, styles) -> None:
 
     for col in range(2, YEAR_COUNT + 2):
         year_col = chr(64 + col)
-        year_index_name = YEAR_INDEX_NAMES[col - 2]
+        year_index_cell = f"Inputs!{year_col}24"
         sheet[f"{year_col}3"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"Operating_Model!{year_col}10,\"\")"
         )
         sheet[f"{year_col}3"].style = styles["currency"]
 
         sheet[f"{year_col}4"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
-            f"one/(one+Discount_Rate)^{year_index_name},\"\")"
+            f"=IF({year_index_cell}<=Projection_Years,"
+            f"1/(1+Discount_Rate)^{year_index_cell},\"\")"
         )
         sheet[f"{year_col}4"].style = styles["number"]
 
         sheet[f"{year_col}5"] = (
-            f"=IF({year_index_name}<=Projection_Years,"
+            f"=IF({year_index_cell}<=Projection_Years,"
             f"{year_col}3*{year_col}4,\"\")"
         )
         sheet[f"{year_col}5"].style = styles["currency"]
 
     last_year_col = chr(64 + YEAR_COUNT + 1)
     sheet[f"{last_year_col}7"] = (
-        "=IF(Projection_Years>zero,"
-        "INDEX(B3:K3,Projection_Years)*(one+Terminal_Growth_Rate)/"
+        "=IF(Projection_Years>0,"
+        "INDEX(B3:K3,Projection_Years)*(1+Terminal_Growth_Rate)/"
         "(Discount_Rate-Terminal_Growth_Rate),\"\")"
     )
     sheet[f"{last_year_col}7"].style = styles["currency"]
 
     sheet[f"{last_year_col}8"] = (
-        "=IF(Projection_Years>zero,"
+        "=IF(Projection_Years>0,"
         f"{last_year_col}7*INDEX(B4:K4,Projection_Years),\"\")"
     )
     sheet[f"{last_year_col}8"].style = styles["currency"]
 
-    sheet["B10"] = "=IF(Projection_Years>zero,SUM(B5:K5),\"\")"
+    sheet["B10"] = "=IF(Projection_Years>0,SUM(B5:K5),\"\")"
     sheet["B10"].style = styles["currency"]
 
-    sheet["B11"] = f"=IF(Projection_Years>zero,{last_year_col}8,\"\")"
+    sheet["B11"] = f"=IF(Projection_Years>0,{last_year_col}8,\"\")"
     sheet["B11"].style = styles["currency"]
 
-    sheet["B12"] = "=IF(Projection_Years>zero,B10+B11,\"\")"
+    sheet["B12"] = "=IF(Projection_Years>0,B10+B11,\"\")"
     sheet["B12"].style = styles["currency"]
 
     sheet["B13"] = "=Net_Debt"
@@ -313,7 +290,7 @@ def _build_valuation(sheet, styles) -> None:
     sheet["B15"] = "=Units_Outstanding"
     sheet["B15"].style = styles["number"]
 
-    sheet["B16"] = "=IF(Units_Outstanding>zero,B14/B15,\"\")"
+    sheet["B16"] = "=IF(Units_Outstanding>0,B14/B15,\"\")"
     sheet["B16"].style = styles["currency"]
 
     sheet.column_dimensions["A"].width = 28
