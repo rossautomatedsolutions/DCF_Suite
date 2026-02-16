@@ -87,28 +87,6 @@ def _build_inputs(sheet, workbook, styles) -> None:
             sheet[f"B{row}"].style = styles["number"]
         row += 1
 
-    sheet["A23"] = "Year Indices"
-    sheet["A23"].style = styles["label"]
-    for col in range(2, YEAR_COUNT + 2):
-        cell = sheet.cell(row=24, column=col)
-        if col == 2:
-            cell.value = "=1"
-        else:
-            prev_col = chr(63 + col)
-            cell.value = f"={prev_col}24+1"
-        cell.style = styles["number"]
-
-    sheet["A26"] = "Year Labels"
-    sheet["A26"].style = styles["label"]
-    for col in range(2, YEAR_COUNT + 2):
-        cell = sheet.cell(row=27, column=col)
-        year_index_cell = f"{chr(64 + col)}24"
-        cell.value = (
-            f"=IF({year_index_cell}<=Projection_Years,"
-            f"Period_Start_Year+{year_index_cell}-1,\"\")"
-        )
-        cell.style = styles["number"]
-
     sheet.column_dimensions["A"].width = 24
     sheet.column_dimensions["B"].width = 18
     sheet.column_dimensions["C"].width = 40
@@ -121,8 +99,14 @@ def _build_operating_model(sheet, styles) -> None:
     sheet["A2"] = "Metric"
     sheet["A2"].style = styles["header"]
     for col in range(2, YEAR_COUNT + 2):
+        year_index = col - 1
+        sheet.cell(row=1, column=col, value=year_index).style = styles["number"]
         cell = sheet.cell(row=2, column=col)
-        cell.value = f"=Inputs!{chr(64 + col)}27"
+        year_col = chr(64 + col)
+        cell.value = (
+            f"=IF({year_col}1<=Projection_Years,"
+            f"Period_Start_Year+{year_col}1-1,\"\")"
+        )
         cell.style = styles["header"]
 
     metrics = [
@@ -142,7 +126,7 @@ def _build_operating_model(sheet, styles) -> None:
 
     for col in range(2, YEAR_COUNT + 2):
         year_col = chr(64 + col)
-        year_index_cell = f"Inputs!{year_col}24"
+        year_index_cell = f"{year_col}1"
         revenue_cell = f"{year_col}3"
         if col == 2:
             revenue_formula = "Revenue_Base*(1+Revenue_Growth_Rate)"
@@ -211,8 +195,14 @@ def _build_valuation(sheet, styles) -> None:
     sheet["A2"].style = styles["header"]
 
     for col in range(2, YEAR_COUNT + 2):
+        year_index = col - 1
+        sheet.cell(row=1, column=col, value=year_index).style = styles["number"]
         cell = sheet.cell(row=2, column=col)
-        cell.value = f"=Inputs!{chr(64 + col)}27"
+        year_col = chr(64 + col)
+        cell.value = (
+            f"=IF({year_col}1<=Projection_Years,"
+            f"Period_Start_Year+{year_col}1-1,\"\")"
+        )
         cell.style = styles["header"]
 
     metrics = [
@@ -239,7 +229,7 @@ def _build_valuation(sheet, styles) -> None:
 
     for col in range(2, YEAR_COUNT + 2):
         year_col = chr(64 + col)
-        year_index_cell = f"Inputs!{year_col}24"
+        year_index_cell = f"{year_col}1"
         sheet[f"{year_col}3"] = (
             f"=IF({year_index_cell}<=Projection_Years,"
             f"Operating_Model!{year_col}10,\"\")"
